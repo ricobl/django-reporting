@@ -148,7 +148,7 @@ class SimpleReport(ChangeList):
     permissions = ()
     date_hierarchy = None
     # in order to enable i18n in template
-    formset = True
+    formset = None
     ordering = ()
     list_display = ()
     list_display_links = (None,)
