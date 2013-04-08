@@ -4,11 +4,11 @@ import copy
 
 from django import forms
 from django.conf import settings
-from django.contrib.admin.options import IncorrectLookupParameters
+from django.contrib.admin.options import IncorrectLookupParameters, ModelAdmin
 from django.contrib.admin.templatetags.admin_static import static
 from django.contrib.admin.util import get_fields_from_path
-from django.contrib.admin.views.main import ORDER_VAR, ChangeList
-from django.core.paginator import Paginator, InvalidPage
+from django.contrib.admin.views.main import ChangeList
+from django.core.paginator import InvalidPage
 from django.db.models.fields import FieldDoesNotExist
 # we have to check EmptyQuerySet due to
 # https://code.djangoproject.com/ticket/17681
@@ -86,9 +86,7 @@ class ReportGrouper(object):
             ])
 
 
-class ReportAdmin(object):
-    ordering = ()
-    paginator = Paginator
+class ReportAdmin(ModelAdmin):
 
     def __init__(self, report):
         self.report = report
@@ -104,17 +102,6 @@ class ReportAdmin(object):
 
     def queryset(self, request):
         return self.report.get_root_query_set(request)
-
-    def get_ordering(self, request):
-        return (self.report.fields[0],)
-
-    def get_paginator(self, request, queryset, per_page, orphans=0,
-                      allow_empty_first_page=True):
-        return self.paginator(queryset, per_page, orphans,
-                              allow_empty_first_page)
-
-    def lookup_allowed(self, lookup, value):
-        return True
 
     @property
     def media(self):
@@ -163,8 +150,6 @@ class SimpleReport(ChangeList):
 
     def __init__(self, request):
         self.admin = ReportAdmin(self)
-        # Workaround for get_ordering
-        self.fields = self.list_display
 
         super(SimpleReport, self).__init__(
             request, self.model, self.list_display, self.list_display_links,
@@ -268,29 +253,6 @@ class Report(SimpleReport):
                 del lookup_params[ignored]
 
         return super(Report, self).get_filters(request)
-
-    def get_ordering(self, request, queryset):
-        params = self.params
-        ordering = list(self._get_default_ordering())
-        if ORDER_VAR in params:
-            # Clear ordering and used params
-            ordering = []
-            order_params = params[ORDER_VAR].split('.')
-            for p in order_params:
-                try:
-                    none, pfx, idx = p.rpartition('-')
-                    field_name = self.list_display[int(idx)]
-                    order_field = self.get_ordering_field(field_name)
-                    if not order_field:
-                        continue  # No 'admin_order_field', skip it
-                    ordering.append(pfx + order_field)
-                except (IndexError, ValueError):
-                    continue  # Invalid ordering specified, skip it.
-
-        # Add the given query's ordering fields, if any.
-        ordering.extend(queryset.query.order_by)
-
-        return ordering
 
     def get_query_string(self, new_params=None, remove=None):
         params = {GROUP_BY_VAR: self.grouper.value()}
