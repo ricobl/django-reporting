@@ -91,6 +91,8 @@ class ReportAdmin(ModelAdmin):
     def __init__(self, report):
         self.report = report
         self.ordering = report.ordering
+        self.model = report.model
+        self.opts = self.model._meta
 
     def __getattr__(self, name):
         # pretend that report admin has all attributes from list_display
